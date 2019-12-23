@@ -1,0 +1,177 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-08-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "ai-pricing-tier": {
+            "type": "string",
+            "defaultValue": "F0",
+            "allowedValues": [
+                "F0",
+                "S1"
+            ]
+        }
+    },
+    "variables": {
+        "location": "[resourceGroup().location]",
+
+        "storage": {
+            "name": "[toLower(concat('storage0', uniqueString(resourceGroup().id)))]",
+            "container": {
+                "name": "faces"
+            }
+        },
+
+        "backend": {
+            "farm": {
+                "name": "[toLower(concat('farm-', uniqueString(resourceGroup().id)))]"
+            },
+            "api": {
+                "name": "[toLower(concat('api-', uniqueString(resourceGroup().id)))]",
+                "runtime": "node"
+            }
+        },
+
+        "ai": {
+            "face": {
+                "name": "[toLower(concat('face-', uniqueString(resourceGroup().id)))]"
+            }
+        },
+
+        "diagnostics": {
+            "name": "[toLower(concat('diagnostics-', uniqueString(resourceGroup().id)))]"
+        }
+    },
+    "resources": [
+        {
+            "name": "[variables('storage').name]",
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2019-04-01",
+            "location": "[variables('location')]",
+            "kind": "StorageV2",
+            "sku": {
+                "name": "Standard_LRS",
+                "tier": "Standard"
+            },
+            "properties": {
+                "accessTier": "Hot",
+                "supportsHttpsTrafficOnly": false
+            },
+            "resources": [
+                {
+                    "name": "[concat('default/', variables('storage').container.name)]",
+                    "type": "blobServices/containers",
+                    "apiVersion": "2019-04-01",
+                    "dependsOn": [
+                        "[variables('storage').name]"
+                    ],
+                    "properties": {
+                        "publicAccess": "Blob"
+                    }
+                }
+            ]
+        },
+        {
+            "apiVersion": "2015-05-01",
+            "name": "[variables('diagnostics').name]",
+            "type": "microsoft.insights/components",
+            "location": "[variables('location')]",
+            "tags": {
+                "[concat('hidden-link:', resourceGroup().id, '/providers/Microsoft.Web/sites/', variables('diagnostics').name)]": "Resource"
+            },
+            "properties": {
+                "Application_Type": "other"
+            }
+        },
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2019-08-01",
+            "name": "[variables('backend').farm.name]",
+            "location": "[variables('location')]",
+            "sku": {
+                "name": "Y1",
+                "tier": "Dynamic"
+            },
+            "properties": {
+                "name": "[variables('backend').farm.name]",
+                "computeMode": "Dynamic"
+            }
+        },
+        {
+            "apiVersion": "2019-08-01",
+            "type": "Microsoft.Web/sites",
+            "name": "[variables('backend').api.name]",
+            "location": "[variables('location')]",
+            "kind": "functionapp",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('backend').farm.name)]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storage').name)]",
+                "[resourceId('Microsoft.CognitiveServices/accounts', variables('ai').face.name)]"
+            ],
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('backend').farm.name)]",
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storage').name, ';AccountKey=', listKeys(variables('storage').name, '2019-04-01').keys[0].value)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storage').name, ';AccountKey=', listKeys(variables('storage').name, '2019-04-01').keys[0].value)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[toLower(variables('backend').api.name)]"
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~2"
+                        },
+                        {
+                            "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                            "value": "~10"
+                        },
+                        {
+                            "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                            "value": "[reference(resourceId('microsoft.insights/components/', variables('diagnostics').name), '2015-05-01').InstrumentationKey]"
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "[variables('backend').api.runtime]"
+                        },
+                        {
+                            "name": "FACE_CONTAINER_NAME",
+                            "value": "[variables('storage').container.name]"
+                        },
+                        {
+                            "name": "FACE_URL",
+                            "value": "[reference(concat('Microsoft.CognitiveServices/accounts/', variables('ai').face.name), '2017-04-18').endpoint]"
+                        },
+                        {
+                            "name": "FACE_KEY",
+                            "value": "[listKeys(variables('ai').face.name, '2017-04-18').key1]"
+                        }
+                    ]
+                },
+                "cors": {
+                    "allowedOrigins": [
+                        "*"
+                    ]
+                },
+                "ftpsState": "Disabled",
+                "use32BitWorkerProcess": false,
+                "remoteDebuggingEnabled": false
+            }
+        },
+        {
+            "name": "[variables('ai').face.name]",
+            "type": "Microsoft.CognitiveServices/accounts",
+            "apiVersion": "2017-04-18",
+            "sku": {
+                "name": "[parameters('ai-pricing-tier')]"
+            },
+            "kind": "Face",
+            "location": "[variables('location')]"
+        }
+    ]
+}
