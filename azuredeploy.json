@@ -54,23 +54,55 @@
             },
             "properties": {
                 "accessTier": "Hot",
-                "supportsHttpsTrafficOnly": false,
-                "cors": {
-                    "allowedOrigins": [
-                        "*"
-                    ]
-                }
+                "supportsHttpsTrafficOnly": false
             },
             "resources": [
                 {
-                    "name": "[concat('default/', variables('storage').container.name)]",
-                    "type": "blobServices/containers",
+                    "name": "default",
+                    "type": "blobServices",
                     "apiVersion": "2019-04-01",
                     "dependsOn": [
                         "[variables('storage').name]"
                     ],
                     "properties": {
-                        "publicAccess": "Blob"
+                        "cors": {
+                            "corsRules": [
+                                {
+                                    "allowedOrigins": [
+                                        "*"
+                                    ],
+                                    "allowedMethods": [
+                                        "DELETE",
+                                        "GET",
+                                        "HEAD",
+                                        "MERGE",
+                                        "POST",
+                                        "OPTIONS",
+                                        "PUT"
+                                    ],
+                                    "maxAgeInSeconds": 900000,
+                                    "exposedHeaders": [
+                                        "*"
+                                    ],
+                                    "allowedHeaders": [
+                                        "*"
+                                    ]
+                                }
+                            ]
+                        },
+                        "resources": [
+                            {
+                                "name": "[concat('default/', variables('storage').container.name)]",
+                                "type": "containers",
+                                "apiVersion": "2019-04-01",
+                                "dependsOn": [
+                                    "[variables('storage').name]"
+                                ],
+                                "properties": {
+                                    "publicAccess": "Blob"
+                                }
+                            }
+                        ]
                     }
                 }
             ]
