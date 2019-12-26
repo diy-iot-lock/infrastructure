@@ -166,6 +166,7 @@
                             "*"
                         ]
                     },
+                    "http20Enabled": true,
                     "ftpsState": "Disabled",
                     "use32BitWorkerProcess": false,
                     "remoteDebuggingEnabled": false
