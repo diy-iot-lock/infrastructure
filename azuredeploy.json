@@ -7,7 +7,7 @@
             "defaultValue": "F0",
             "allowedValues": [
                 "F0",
-                "S1"
+                "S0"
             ]
         }
     },
