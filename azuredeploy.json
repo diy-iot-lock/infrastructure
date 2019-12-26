@@ -54,7 +54,12 @@
             },
             "properties": {
                 "accessTier": "Hot",
-                "supportsHttpsTrafficOnly": false
+                "supportsHttpsTrafficOnly": false,
+                "cors": {
+                    "allowedOrigins": [
+                        "*"
+                    ]
+                }
             },
             "resources": [
                 {
@@ -144,23 +149,27 @@
                             "value": "[variables('storage').container.name]"
                         },
                         {
-                            "name": "FACE_URL",
-                            "value": "[reference(concat('Microsoft.CognitiveServices/accounts/', variables('ai').face.name), '2017-04-18').endpoint]"
+                            "name": "FACE_HOST",
+                            "value": "[replace(replace(reference(concat('Microsoft.CognitiveServices/accounts/', variables('ai').face.name), '2017-04-18').endpoint, 'https://', ''), '/', '')]"
                         },
                         {
                             "name": "FACE_KEY",
                             "value": "[listKeys(variables('ai').face.name, '2017-04-18').key1]"
+                        },
+                        {
+                            "name": "AZURE_FUNCTION_PROXY_BACKEND_URL_DECODE_SLASHES",
+                            "value": "true"
                         }
-                    ]
-                },
-                "cors": {
-                    "allowedOrigins": [
-                        "*"
-                    ]
-                },
-                "ftpsState": "Disabled",
-                "use32BitWorkerProcess": false,
-                "remoteDebuggingEnabled": false
+                    ],
+                    "cors": {
+                        "allowedOrigins": [
+                            "*"
+                        ]
+                    },
+                    "ftpsState": "Disabled",
+                    "use32BitWorkerProcess": false,
+                    "remoteDebuggingEnabled": false
+                }
             }
         },
         {
